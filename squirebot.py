@@ -5,28 +5,49 @@ import pytesseract
 pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract'
 import time
 
-from directkeys import PressKey, ReleaseKey, W, A, S, D, SHIFT, CTRL, ESC, C
+from directkeys import PressKey, ReleaseKey, W, A, S, D, SHIFT, CTRL, ESC, C, LEFT, RIGHT
 from PIL import ImageGrab
 
 class SquireBot:
     
-    def __init__(self):
+    def __init__(self, dimx=1080, dimy=1920, apply_factor=False):
         self.ir_factor = 4
+        #self.x_sfactor = dimx/1080
+        #self.y_sfactor = dimy/1920
+        self.x_sfactor = (dimx-1080)
+        self.y_sfactor = (dimy-1920)
+        self.x_cfactor = (dimx-1080)/2
+        self.y_cfactor = (dimy-1920)/2
+        self.apply_factor = apply_factor
         print("Initialized")
         
     def execute_action_on_squires(self, start, num_chars, action, **kwargs):
         self.alt_tab()
+        
+        for i in range(start):
+            PressKey(RIGHT)
+            ReleaseKey(RIGHT)
+            time.sleep(0.1)
+        
         for i in range(start, num_chars):
             kwargs['squire_id'] = i
-            self._select_character(i)
-            self._login()
+            self._login(i)
             action(**kwargs)
             self._logout()
+            
+            PressKey(RIGHT)
+            ReleaseKey(RIGHT)
+            
+        for i in range(num_chars):
+            PressKey(LEFT)
+            ReleaseKey(LEFT)
+            time.sleep(0.1)
+            
         self.alt_tab()
         print("Finished")
         
-    def _train_advanced_squire(self, missions_by_id, squire_id, **kwargs):
-        self._reassign_missions(missions_by_id, squire_id, number=2)
+    def _train_advanced_squire(self, missions_by_id, squire_id, mission_number=2, **kwargs):
+        self._reassign_missions(missions_by_id, squire_id, number=mission_number)
         self._reset_char_screen()
         self._enter_avalon_gate()
         self._mabi_zoom(12, -500)
@@ -41,65 +62,70 @@ class SquireBot:
         self._mabi_click(950, 330, delay=0.5)
         avalon_confirm = "./confirms/avalon_confirm.png"
         self._wait_for_element_or_timeout(avalon_confirm, 0.07, 15)
-        time.sleep(2)
+        time.sleep(4)
         
     def _move_to_squire(self, squire):
         if squire == "kanna":
-            self._mabi_click(500, 400, delay=5)
+            self._mabi_click(500, 400, delay=5, apply_sfactor=self.apply_factor)
     
     def _converse_with_squire(self):
-        self._talk_to_squire()
+        self._talk_to_squire(talk_delay=2)
         for i in range(3):
             self._click_through_text()
+            time.sleep(1)
             self._answer_conv_question()
-            self._end_conv()
+            time.sleep(1)
+        self._end_conv()
     
-    def _talk_to_squire(self):
-        self._mabi_click(540, 960, delay=0.1)
+    def _talk_to_squire(self, talk_delay=5):
+        self._mabi_click(540, 960, delay=0.1, apply_cfactor=self.apply_factor)
         PressKey(CTRL)
-        self._mabi_click(540, 960, delay=5)
+        self._mabi_click(540, 960, delay=talk_delay, apply_cfactor=self.apply_factor)
         ReleaseKey(CTRL)
         
-        screen_text = self._get_screen_tesseract_text(950, 450, 1000, 900)
+        screen_text = self._get_screen_tesseract_text(950, 450, 1000, 900, apply_factor=self.apply_factor)
         while 'Conversation' not in screen_text and 'Counsel' not in screen_text:
-            self._mabi_click(980, 530, delay=0.5)
-            screen_text = self._get_screen_tesseract_text(950, 450, 1000, 900)
+            self._mabi_click(980, 530, delay=0.5, apply_sfactor=self.apply_factor)
+            screen_text = self._get_screen_tesseract_text(950, 450, 1000, 900, apply_factor=self.apply_factor)
         
     def _click_through_text(self):
         start_time = time.time()
         conv_confirm = "./confirms/conv_confirm.png"
         while not self._element_exists(conv_confirm, 0.1) and \
-                time.time()-start_time < 5:
-            self._mabi_click(980, 530, delay=0.5)
+                time.time()-start_time < 20:
+            self._mabi_click(980, 530, delay=0.5, apply_sfactor=self.apply_factor)
             
     def _answer_conv_question(self):
-        screen_text = self._get_screen_tesseract_text(775, 450, 820, 775)
-        answer_key = {'mission': (820, 1180), 'train': (870, 1180), 
-                      'play': (940, 1180), 'cook': (790, 1340), 
-                      'dress': (840, 1340), 'embarrassed': (900, 1340)}
-        print(screen_text)
-        for answer in answer_key:
-            if answer in screen_text:
-                x, y = answer_key[answer]
-                self._mabi_click(x, y, delay=0.5)
-                break
+        for i in range(3):
+            screen_text = self._get_screen_tesseract_text(775, 450, 820, 775, apply_factor=self.apply_factor)
+            answer_key = {'mission': (820, 1180), 'train': (870, 1180), 
+                          'play': (940, 1180), 'cook': (790, 1340), 
+                          'dress': (840, 1340), 'embarrassed': (900, 1340)}
+            for answer in answer_key:
+                if answer in screen_text:
+                    x, y = answer_key[answer]
+                    self._mabi_click(x, y, delay=1, apply_sfactor=self.apply_factor)
+                    break
                 
     def _end_training(self):
         self._talk_to_squire()
-        self._mabi_click(980, 670, delay=0.5)
+        self._mabi_click(980, 670, delay=0.5, apply_sfactor=self.apply_factor)
         self._mabi_click(660, 1880, delay=0.5)
-        self._mabi_click(610, 1000, delay=1)
+        self._mabi_click(610, 1000, delay=1, apply_cfactor=self.apply_factor)
+        self._mabi_click(980, 530, delay=0.5, apply_sfactor=self.apply_factor)
+        PressKey(W)
+        ReleaseKey(W)
         self._reset_char_screen()
         time.sleep(2)
     
     def _start_training(self, train_id):
-        self._talk_to_squire()
-        self._mabi_click(980, 670, delay=0.5)
+        self._talk_to_squire(talk_delay=2)
+        self._mabi_click(980, 670, delay=0.5, apply_sfactor=self.apply_factor)
         for i in range(train_id-6):
             self._mabi_click(600, 1900)
         loc = min(6, train_id)
         self._mabi_click(410+28*loc, 1600, delay=0.1)
-        self._mabi_click(690, 1020, delay=0.5)
+        self._mabi_click(690, 1020, delay=0.5, apply_cfactor=self.apply_factor)
         self._reset_char_screen()
         time.sleep(2)
     
@@ -107,25 +133,26 @@ class SquireBot:
         start_time = time.time()
         talk_confirm = "./confirms/talk_confirm.png"
         while self._element_exists(talk_confirm, 0.05) and \
-                time.time()-start_time < 5:
-            self._mabi_click(980, 530, delay=0.2)
+                time.time()-start_time < 15:
+            self._mabi_click(980, 530, delay=0.2, apply_sfactor=self.apply_factor)
         time.sleep(2)
     
-    def _get_screen_tesseract_text(self, x1, y1, x2, y2):
+    def _get_screen_tesseract_text(self, x1, y1, x2, y2, apply_factor=False):
         screen = np.array(ImageGrab.grab())
         screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
-        text_cutout = screen[x1:x2, y1:y2]
+        y_factor = self.y_sfactor if apply_factor else 0
+        x_factor = self.x_sfactor if apply_factor else 0
+        
+        text_cutout = screen[x1+x_factor:x2+x_factor, y1+y_factor:y2+y_factor]
         text_cutout = cv2.resize(text_cutout,None,fx=4,fy=4)
         ret, text_cutout = cv2.threshold(text_cutout,127,255,cv2.THRESH_BINARY)
         text = pytesseract.image_to_string(text_cutout, config='--psm 12 --oem 3')
+        #print(text)
         return text
     
     def _reassign_missions(self, missions_by_id, squire_id, number=3):
         missions = missions_by_id[squire_id]
         self._complete_missions(number)
-            
-        self._mabi_click(420, 650, delay=0.1)
-        self._mabi_click(450, 790, delay=0.5)
         self._assign_missions(missions)
         
     def _complete_missions(self, number):
@@ -136,11 +163,14 @@ class SquireBot:
             self._mabi_click(480, 520, delay=0.1)
             PressKey(W)
             ReleaseKey(W)
-            self._mabi_click(600, 1000, delay=2)
+            self._mabi_click(600, 1000, delay=2, apply_cfactor=self.apply_factor)
             for j in range(4):
-                self._mabi_click(590, 910+j*20)
+                self._mabi_click(590, 910+j*20, apply_cfactor=self.apply_factor)
               
     def _assign_missions(self, mission_chart):
+        self._mabi_click(420, 650, delay=0.1, apply_cfactor=self.apply_factor)
+        self._mabi_click(450, 790, delay=0.5, apply_cfactor=self.apply_factor)
+        
         assigned_squires = 0
         for i in range(3):
             if mission_chart[i] < 0:
@@ -151,9 +181,9 @@ class SquireBot:
                     mission_chart[j] -= 1
             self._select_squire(i - assigned_squires)
             self._mabi_click(480, 520, delay=0.1)
-            self._mabi_click(610, 1020, delay=2)
+            self._mabi_click(610, 1020, delay=2, apply_cfactor=self.apply_factor)
             for j in range(4):
-                self._mabi_click(590, 910+j*20)
+                self._mabi_click(590, 910+j*20, apply_cfactor=self.apply_factor)
             assigned_squires += 1
     
     def _reset_char_screen(self):
@@ -167,17 +197,18 @@ class SquireBot:
         
     def _select_mission(self, i):
         if i > 5:
-            self._mabi_click(755, 960, delay=0.1)
+            self._mabi_click(755, 960, delay=0.1, apply_cfactor=self.apply_factor)
             i -= 6
         else:
-            self._mabi_click(755, 930, delay=0.1)
-        self._mabi_click(500+i*42, 780, delay=0.1)
+            self._mabi_click(755, 930, delay=0.1, apply_cfactor=self.apply_factor)
+        self._mabi_click(500+i*42, 780, delay=0.1, apply_cfactor=self.apply_factor)
         
     def _select_squire(self, i):
         self._mabi_click(180+i*80, 520, delay=0.1)
     
-    def _login(self):
-        self._mabi_click(1030, 50, delay=5)
+    def _login(self, squire_id):
+        self._mabi_click(250+50*squire_id, 1700, multi_click=4)
+        self._mabi_click(1030, 50, delay=5, apply_sfactor=self.apply_factor)
         login_confirm = "./confirms/login_confirm.png"
         self._wait_for_element_or_timeout(login_confirm, 0.06, 15)
         time.sleep(2)
@@ -187,15 +218,12 @@ class SquireBot:
             self._mabi_click(320, 1330, delay=1)
         
     def _logout(self):
-        self._mabi_click(1060, 580, delay=0.5)
-        self._mabi_click(980, 600, delay=0.5)
-        self._mabi_click(600, 1000, delay=0.5)
+        self._mabi_click(1060, 580, delay=0.5, apply_sfactor=self.apply_factor)
+        self._mabi_click(980, 600, delay=0.5, apply_sfactor=self.apply_factor)
+        self._mabi_click(600, 1000, delay=0.5, apply_cfactor=self.apply_factor)
         logout_confirm = "./confirms/logout_confirm.png"
         self._wait_for_element_or_timeout(logout_confirm, 0.06, 15)
         time.sleep(8)
-    
-    def _select_character(self, id):
-        self._mabi_click(250+50*id, 1700, delay=1)
     
     def _wait_for_element_or_timeout(self, element_name, threshold, timeout):
         start_time = time.time()
@@ -236,12 +264,19 @@ class SquireBot:
         dist = cv2.distanceTransform(canny,cv2.DIST_L1,5)
         return dist
     
-    @staticmethod
-    def _mabi_click(h, w, delay=None, clickDelay=0.1):
-        pyautogui.moveTo(w, h)
-        pyautogui.mouseDown(); 
-        time.sleep(clickDelay); 
-        pyautogui.mouseUp() 
+    def _mabi_click(self, h, w, delay=None, clickDelay=0.1, multi_click=1, apply_sfactor=False, apply_cfactor=False):
+        #y_sfactor = self.y_sfactor if apply_sfactor else 1
+        #x_sfactor = self.x_sfactor if apply_sfactor else 1
+        y_sfactor = self.y_sfactor if apply_sfactor else 0
+        x_sfactor = self.x_sfactor if apply_sfactor else 0
+        y_cfactor = self.y_cfactor if apply_cfactor else 0
+        x_cfactor = self.x_cfactor if apply_cfactor else 0
+        
+        for i in range(multi_click):
+            pyautogui.moveTo(w+y_sfactor+y_cfactor, h+x_sfactor+x_cfactor)
+            pyautogui.mouseDown(); 
+            time.sleep(clickDelay); 
+            pyautogui.mouseUp() 
         
         if delay:
             time.sleep(delay)

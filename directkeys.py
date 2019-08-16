@@ -16,7 +16,9 @@ D = 0x20
 C = 0x2E
 ESC = 0x01
 CTRL = 0x1D
-SHIFT = 0x2A	
+SHIFT = 0x2A
+LEFT = 0xCB
+RIGHT = 0xCD
 
 # C struct redefinitions 
 PUL = ctypes.POINTER(ctypes.c_ulong)
