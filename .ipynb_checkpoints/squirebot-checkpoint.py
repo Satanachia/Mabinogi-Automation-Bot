@@ -46,16 +46,17 @@ class SquireBot:
         self.alt_tab()
         print("Finished")
         
-    def _train_advanced_squire(self, missions_by_id, squire_id, mission_number=2, **kwargs):
+    def _train_advanced_squire(self, missions_by_id, squire_id, training_by_id, mission_number=2, **kwargs):
         self._reassign_missions(missions_by_id, squire_id, number=mission_number)
         self._reset_char_screen()
         self._enter_avalon_gate()
         self._mabi_zoom(12, -500)
-        self._move_to_squire("kanna")
+        self._move_to_squire("kanna", squire_id)
         self._end_training()
         self._converse_with_squire()
-        self._start_training(3)
-        time.sleep(2)
+        
+        training = training_by_id[squire_id][0]
+        self._start_training(training)
     
     def _enter_avalon_gate(self):
         self._mabi_click(640, 290, delay=0.1)
@@ -64,9 +65,16 @@ class SquireBot:
         self._wait_for_element_or_timeout(avalon_confirm, 0.07, 15)
         time.sleep(4)
         
-    def _move_to_squire(self, squire):
+    def _move_to_squire(self, squire, squire_id):
+        duration = 4
+        if squire_id in [0, 7, 8, 10]:
+            duration = 5
+            
         if squire == "kanna":
-            self._mabi_click(500, 400, delay=5, apply_sfactor=self.apply_factor)
+            #self._mabi_click(500, 400, delay=5, apply_sfactor=self.apply_factor)
+            PressKey(A)
+            time.sleep(duration)
+            ReleaseKey(A)
     
     def _converse_with_squire(self):
         self._talk_to_squire(talk_delay=2)
@@ -77,7 +85,7 @@ class SquireBot:
             time.sleep(1)
         self._end_conv()
     
-    def _talk_to_squire(self, talk_delay=5):
+    def _talk_to_squire(self, talk_delay=8):
         self._mabi_click(540, 960, delay=0.1, apply_cfactor=self.apply_factor)
         PressKey(CTRL)
         self._mabi_click(540, 960, delay=talk_delay, apply_cfactor=self.apply_factor)
@@ -91,7 +99,7 @@ class SquireBot:
     def _click_through_text(self):
         start_time = time.time()
         conv_confirm = "./confirms/conv_confirm.png"
-        while not self._element_exists(conv_confirm, 0.1) and \
+        while not self._element_exists(conv_confirm, 0.08) and \
                 time.time()-start_time < 20:
             self._mabi_click(980, 530, delay=0.5, apply_sfactor=self.apply_factor)
             
@@ -101,6 +109,7 @@ class SquireBot:
             answer_key = {'mission': (820, 1180), 'train': (870, 1180), 
                           'play': (940, 1180), 'cook': (790, 1340), 
                           'dress': (840, 1340), 'embarrassed': (900, 1340)}
+            #print(i, screen_text)
             for answer in answer_key:
                 if answer in screen_text:
                     x, y = answer_key[answer]
@@ -112,14 +121,14 @@ class SquireBot:
         self._mabi_click(980, 670, delay=0.5, apply_sfactor=self.apply_factor)
         self._mabi_click(660, 1880, delay=0.5)
         self._mabi_click(610, 1000, delay=1, apply_cfactor=self.apply_factor)
-        self._mabi_click(980, 530, delay=0.5, apply_sfactor=self.apply_factor)
+        self._mabi_click(980, 530, delay=0.1, apply_sfactor=self.apply_factor)
         PressKey(W)
         ReleaseKey(W)
         self._reset_char_screen()
         time.sleep(2)
     
     def _start_training(self, train_id):
-        self._talk_to_squire(talk_delay=2)
+        self._talk_to_squire(talk_delay=3)
         self._mabi_click(980, 670, delay=0.5, apply_sfactor=self.apply_factor)
         for i in range(train_id-6):
             self._mabi_click(600, 1900)
@@ -167,19 +176,21 @@ class SquireBot:
             for j in range(4):
                 self._mabi_click(590, 910+j*20, apply_cfactor=self.apply_factor)
               
-    def _assign_missions(self, mission_chart):
+    def _assign_missions(self, mission_chart_master):
         self._mabi_click(420, 650, delay=0.1, apply_cfactor=self.apply_factor)
         self._mabi_click(450, 790, delay=0.5, apply_cfactor=self.apply_factor)
         
+        mission_chart = mission_chart_master
         assigned_squires = 0
-        for i in range(3):
-            if mission_chart[i] < 0:
+        for squire in mission_chart:
+            if mission_chart[squire] < 0:
                 continue
-            self._select_mission(mission_chart[i])
+            self._select_mission(mission_chart[squire])
             for j in range(3):
-                if mission_chart[j] > mission_chart[i]:
+                if mission_chart[squire] > mission_chart[squire]:
                     mission_chart[j] -= 1
-            self._select_squire(i - assigned_squires)
+                    
+            self._select_squire(squire)
             self._mabi_click(480, 520, delay=0.1)
             self._mabi_click(610, 1020, delay=2, apply_cfactor=self.apply_factor)
             for j in range(4):
@@ -187,7 +198,7 @@ class SquireBot:
             assigned_squires += 1
     
     def _reset_char_screen(self):
-        for i in range(4):
+        for i in range(6):
             PressKey(ESC)
             ReleaseKey(ESC)
             time.sleep(0.2)
@@ -203,8 +214,15 @@ class SquireBot:
             self._mabi_click(755, 930, delay=0.1, apply_cfactor=self.apply_factor)
         self._mabi_click(500+i*42, 780, delay=0.1, apply_cfactor=self.apply_factor)
         
-    def _select_squire(self, i):
-        self._mabi_click(180+i*80, 520, delay=0.1)
+    def _select_squire(self, squire):
+        #self._mabi_click(180+i*80, 520, delay=0.1)
+        screen = self.grab_screen()
+        screen = screen[0:int(600/self.ir_factor), 0:int(900/self.ir_factor)]
+        confirm = "./confirms/" + squire + "_confirm.png"
+        img = self.load_image(confirm)
+        res = cv2.matchTemplate(screen, img, cv2.TM_SQDIFF_NORMED)
+        min_val, _, min_loc, _ = cv2.minMaxLoc(res)
+        self._mabi_click(min_loc[1]*self.ir_factor+20, min_loc[0]*self.ir_factor+20, delay=0.1, apply_cfactor=self.apply_factor)
     
     def _login(self, squire_id):
         self._mabi_click(250+50*squire_id, 1700, multi_click=4)
@@ -282,7 +300,7 @@ class SquireBot:
             time.sleep(delay)
             
     @staticmethod
-    def _mabi_zoom(cycle, amount, x=540, y=960):
+    def _mabi_zoom(cycle, amount, x=400, y=960):
         for i in range(cycle):
             pyautogui.moveTo(y, x)
             pyautogui.scroll(amount)
