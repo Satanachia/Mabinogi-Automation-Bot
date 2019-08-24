@@ -1,3 +1,4 @@
+import copy
 import cv2
 import numpy as np
 import pyautogui
@@ -12,8 +13,6 @@ class SquireBot:
     
     def __init__(self, dimx=1080, dimy=1920, apply_factor=False):
         self.ir_factor = 4
-        #self.x_sfactor = dimx/1080
-        #self.y_sfactor = dimy/1920
         self.x_sfactor = (dimx-1080)
         self.y_sfactor = (dimy-1920)
         self.x_cfactor = (dimx-1080)/2
@@ -21,6 +20,20 @@ class SquireBot:
         self.apply_factor = apply_factor
         print("Initialized")
         
+    def execute_repeated_action(self, start, num_chars, action, cycle=2260, **kwargs):
+        while True:
+            print("Starting", str(action))
+            start_time = time.time()
+            self.execute_action_on_squires(start, num_chars, action, **kwargs)
+            
+            i = 0
+            while time.time() - start_time < cycle:
+                if i % 5 == 0:
+                    print(time.time()-start_time, cycle)
+                i += 1
+                time.sleep(60)
+            start = 0
+    
     def execute_action_on_squires(self, start, num_chars, action, **kwargs):
         self.alt_tab()
         
@@ -32,6 +45,7 @@ class SquireBot:
         for i in range(start, num_chars):
             kwargs['squire_id'] = i
             self._login(i)
+            self._reset_char_screen()
             action(**kwargs)
             self._logout()
             
@@ -46,14 +60,34 @@ class SquireBot:
         self.alt_tab()
         print("Finished")
         
-    def _train_advanced_squire(self, missions_by_id, squire_id, training_by_id, mission_number=2, **kwargs):
+    def _counsel_squires(self, squire_id, **kwargs):
+        self._complete_missions(3)
+        self._reset_char_screen()
+        self._enter_avalon_gate()
+        self._mabi_zoom(12, -500)
+        self._move_to_squire(("center", "kanna"), squire_id)
+        self._end_training()
+        self._counsel()
+        self._move_to_squire(("kanna", "logan"), squire_id)
+        self._end_training()
+        self._counsel()
+        self._move_to_squire(("logan", "dai"), squire_id)
+        self._end_training()
+        self._counsel()
+    
+    def _counsel(self):
+        self._talk_to_squire(talk_delay=2)
+        self._mabi_click(990, 750, delay=0.5, apply_sfactor=self.apply_factor)
+        self._end_conv()
+    
+    def _train_advanced_squire(self, missions_by_id, squire_id, training_by_id, mission_number=3, **kwargs):
         self._reassign_missions(missions_by_id, squire_id, number=mission_number)
         self._reset_char_screen()
         self._enter_avalon_gate()
         self._mabi_zoom(12, -500)
-        self._move_to_squire("kanna", squire_id)
+        self._move_to_squire(("center", "kanna"), squire_id)
         self._end_training()
-        self._converse_with_squire()
+        #self._converse_with_squire()
         
         training = training_by_id[squire_id][0]
         self._start_training(training)
@@ -65,16 +99,26 @@ class SquireBot:
         self._wait_for_element_or_timeout(avalon_confirm, 0.07, 15)
         time.sleep(4)
         
-    def _move_to_squire(self, squire, squire_id):
-        duration = 4
-        if squire_id in [0, 7, 8, 10]:
-            duration = 5
+    def _move_to_squire(self, iternary, squire_id):
+        non_elf = squire_id in [0, 7, 8, 10]
             
-        if squire == "kanna":
-            #self._mabi_click(500, 400, delay=5, apply_sfactor=self.apply_factor)
+        if iternary == ("center", "kanna"):
+            duration = 5 if non_elf else 4
             PressKey(A)
             time.sleep(duration)
             ReleaseKey(A)
+        
+        if iternary == ("kanna", "logan"):
+            duration = 11 if non_elf else 9
+            PressKey(D)
+            time.sleep(duration)
+            ReleaseKey(D)
+        
+        if iternary == ("logan", "dai"):
+            duration = 5 if non_elf else 4
+            PressKey(D)
+            time.sleep(duration)
+            ReleaseKey(D)
     
     def _converse_with_squire(self):
         self._talk_to_squire(talk_delay=2)
@@ -125,7 +169,6 @@ class SquireBot:
         PressKey(W)
         ReleaseKey(W)
         self._reset_char_screen()
-        time.sleep(2)
     
     def _start_training(self, train_id):
         self._talk_to_squire(talk_delay=3)
@@ -143,7 +186,7 @@ class SquireBot:
         talk_confirm = "./confirms/talk_confirm.png"
         while self._element_exists(talk_confirm, 0.05) and \
                 time.time()-start_time < 15:
-            self._mabi_click(980, 530, delay=0.2, apply_sfactor=self.apply_factor)
+            self._mabi_click(980, 530, delay=1, apply_sfactor=self.apply_factor)
         time.sleep(2)
     
     def _get_screen_tesseract_text(self, x1, y1, x2, y2, apply_factor=False):
@@ -180,15 +223,15 @@ class SquireBot:
         self._mabi_click(420, 650, delay=0.1, apply_cfactor=self.apply_factor)
         self._mabi_click(450, 790, delay=0.5, apply_cfactor=self.apply_factor)
         
-        mission_chart = mission_chart_master
+        mission_chart = copy.deepcopy(mission_chart_master)
         assigned_squires = 0
         for squire in mission_chart:
             if mission_chart[squire] < 0:
                 continue
             self._select_mission(mission_chart[squire])
-            for j in range(3):
-                if mission_chart[squire] > mission_chart[squire]:
-                    mission_chart[j] -= 1
+            for other_squires in mission_chart:
+                if mission_chart[other_squires] > mission_chart[squire]:
+                    mission_chart[other_squires] -= 1
                     
             self._select_squire(squire)
             self._mabi_click(480, 520, delay=0.1)
@@ -208,10 +251,10 @@ class SquireBot:
         
     def _select_mission(self, i):
         if i > 5:
-            self._mabi_click(755, 960, delay=0.1, apply_cfactor=self.apply_factor)
+            self._mabi_click(748, 962, delay=0.1, apply_cfactor=self.apply_factor)
             i -= 6
         else:
-            self._mabi_click(755, 930, delay=0.1, apply_cfactor=self.apply_factor)
+            self._mabi_click(748, 938, delay=0.1, apply_cfactor=self.apply_factor)
         self._mabi_click(500+i*42, 780, delay=0.1, apply_cfactor=self.apply_factor)
         
     def _select_squire(self, squire):
@@ -228,12 +271,12 @@ class SquireBot:
         self._mabi_click(250+50*squire_id, 1700, multi_click=4)
         self._mabi_click(1030, 50, delay=5, apply_sfactor=self.apply_factor)
         login_confirm = "./confirms/login_confirm.png"
-        self._wait_for_element_or_timeout(login_confirm, 0.06, 15)
+        self._wait_for_element_or_timeout(login_confirm, 0.08, 15)
         time.sleep(2)
         
         new_day_confirm = "./confirms/new_day_confirm.png"
         if self._element_exists(new_day_confirm, 0.12):
-            self._mabi_click(320, 1330, delay=1)
+            self._mabi_click(320, 1330, delay=1, apply_cfactor=self.apply_factor)
         
     def _logout(self):
         self._mabi_click(1060, 580, delay=0.5, apply_sfactor=self.apply_factor)
