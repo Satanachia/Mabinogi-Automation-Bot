@@ -11,13 +11,18 @@ from PIL import ImageGrab
 
 class SquireBot:
     
-    def __init__(self, dimx=1080, dimy=1920, apply_factor=False):
-        self.ir_factor = 4
+    def __init__(self, apply_factor=True):
+        self.ir_factor = 1
+        img = self.grab_screen()
+        dimx, dimy = img.shape
+        print("X, Y dimensions are:", img.shape)
+        
         self.x_sfactor = (dimx-1080)
         self.y_sfactor = (dimy-1920)
         self.x_cfactor = (dimx-1080)/2
         self.y_cfactor = (dimy-1920)/2
         self.apply_factor = apply_factor
+        self.ir_factor = 4
         print("Initialized")
         
     def execute_repeated_action(self, start, num_chars, action, cycle=2260, **kwargs):
@@ -80,14 +85,16 @@ class SquireBot:
         self._mabi_click(990, 750, delay=0.5, apply_sfactor=self.apply_factor)
         self._end_conv()
     
-    def _train_advanced_squire(self, missions_by_id, squire_id, training_by_id, mission_number=3, **kwargs):
+    def _train_advanced_squire(self, missions_by_id, squire_id, training_by_id, mission_number=3, converse=False, **kwargs):
         self._reassign_missions(missions_by_id, squire_id, number=mission_number)
         self._reset_char_screen()
         self._enter_avalon_gate()
         self._mabi_zoom(12, -500)
         self._move_to_squire(("center", "kanna"), squire_id)
         self._end_training()
-        #self._converse_with_squire()
+        
+        if converse:
+            self._converse_with_squire()
         
         training = training_by_id[squire_id][0]
         self._start_training(training)
@@ -326,8 +333,6 @@ class SquireBot:
         return dist
     
     def _mabi_click(self, h, w, delay=None, clickDelay=0.1, multi_click=1, apply_sfactor=False, apply_cfactor=False):
-        #y_sfactor = self.y_sfactor if apply_sfactor else 1
-        #x_sfactor = self.x_sfactor if apply_sfactor else 1
         y_sfactor = self.y_sfactor if apply_sfactor else 0
         x_sfactor = self.x_sfactor if apply_sfactor else 0
         y_cfactor = self.y_cfactor if apply_cfactor else 0
@@ -388,10 +393,6 @@ class SquireBot:
         ReleaseKey(SHIFT)
         self._mabi_click(startx+80, starty+80, delay=0.8)
         self._mabi_click(endx, endy, delay=0.5)
-    
-    mission_charts = {0: [1, 3, 5], 1: [3, 2, 5], 2: [1, 3, 5], 3: [1, 3, 5],
-                      4: [3, 2, 5], 5: [3, 2, 5], 6: [3, 2, 5], 7: [3, 2, 5],
-                      8: [1, 3, 5], 9: [3, 2, 5], 10: [1, 3, 5], 11: [1, 3, 5]}
         
         
         
