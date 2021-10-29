@@ -136,7 +136,7 @@ class SquireBot:
             time.sleep(1)
         self._end_conv()
     
-    def _talk_to_squire(self, talk_delay=8):
+    def _talk_to_squire(self, talk_delay=3):
         self._mabi_click(540, 960, delay=0.1, apply_cfactor=self.apply_factor)
         PressKey(CTRL)
         self._mabi_click(540, 960, delay=talk_delay, apply_cfactor=self.apply_factor)
@@ -156,20 +156,26 @@ class SquireBot:
             
     def _answer_conv_question(self):
         for i in range(3):
-            screen_text = self._get_screen_tesseract_text(775, 450, 820, 775, apply_factor=self.apply_factor)
-            answer_key = {'mission': (820, 1180), 'train': (870, 1180), 
-                          'play': (940, 1180), 'cook': (790, 1340), 
-                          'dress': (840, 1340), 'embarrassed': (900, 1340)}
-            #print(i, screen_text)
+            screen_text = self._get_screen_tesseract_text(790, 450, 850, 910, apply_factor=self.apply_factor)
+            answer_key = {'mission': (835, 1180), 'train': (910, 1180), 
+                          'play': (778, 1340), 'cook': (840, 1340), 
+                          'dress': (900, 1340), 'embarrassed': (960, 1340),
+                         'aslesy': (835, 1180), '2mm': (835, 1180)}
+#             answer_key = {'mission': (820, 1180), 'train': (870, 1180), 
+#                           'play': (940, 1180), 'cook': (790, 1340), 
+#                           'dress': (840, 1340), 'embarrassed': (900, 1340)}
+            print(i, screen_text)
             for answer in answer_key:
                 if answer in screen_text:
                     x, y = answer_key[answer]
-                    self._mabi_click(x, y, delay=1, apply_sfactor=self.apply_factor)
-                    break
+                    self._mabi_click(x, y, delay=0.5, apply_sfactor=self.apply_factor)
+                    return
+            print("DEFAULTING TO MISSION:", screen_text)
+            self._mabi_click(835, 1180, delay=0.5, apply_sfactor=self.apply_factor)
                 
     def _end_training(self):
         self._talk_to_squire()
-        self._mabi_click(980, 670, delay=0.5, apply_sfactor=self.apply_factor)
+        self._mabi_click(980, 720, delay=0.5, apply_sfactor=self.apply_factor)
         self._mabi_click(660, 1880, delay=0.5)
         self._mabi_click(610, 1000, delay=1, apply_cfactor=self.apply_factor)
         self._mabi_click(980, 530, delay=0.1, apply_sfactor=self.apply_factor)
@@ -179,11 +185,11 @@ class SquireBot:
     
     def _start_training(self, train_id):
         self._talk_to_squire(talk_delay=3)
-        self._mabi_click(980, 670, delay=0.5, apply_sfactor=self.apply_factor)
+        self._mabi_click(980, 720, delay=0.5, apply_sfactor=self.apply_factor)
         for i in range(train_id-6):
             self._mabi_click(600, 1900)
         loc = min(6, train_id)
-        self._mabi_click(410+28*loc, 1600, delay=0.1)
+        self._mabi_click(410+28*loc, 1600, delay=0.3)
         self._mabi_click(690, 1020, delay=0.5, apply_cfactor=self.apply_factor)
         self._reset_char_screen()
         time.sleep(2)
@@ -206,7 +212,7 @@ class SquireBot:
         text_cutout = cv2.resize(text_cutout,None,fx=4,fy=4)
         ret, text_cutout = cv2.threshold(text_cutout,127,255,cv2.THRESH_BINARY)
         text = pytesseract.image_to_string(text_cutout, config='--psm 12 --oem 3')
-        #print(text)
+#         print(text)
         return text
     
     def _reassign_missions(self, missions_by_id, squire_id, number=3):
@@ -215,14 +221,14 @@ class SquireBot:
         self._assign_missions(missions)
         
     def _complete_missions(self, number):
-        self._mabi_click(640, 290, delay=0.1)
+        self._mabi_click(640, 290, delay=0.2)
         self._mabi_click(990, 330, delay=0.5)
         for i in range(number):
             self._select_mission(0)
-            self._mabi_click(480, 520, delay=0.1)
+            self._mabi_click(480, 520, delay=0.3)
             PressKey(W)
             ReleaseKey(W)
-            self._mabi_click(600, 1000, delay=2, apply_cfactor=self.apply_factor)
+            self._mabi_click(600, 1000, delay=1, apply_cfactor=self.apply_factor)
             for j in range(4):
                 self._mabi_click(590, 910+j*20, apply_cfactor=self.apply_factor)
               
@@ -241,8 +247,8 @@ class SquireBot:
                     mission_chart[other_squires] -= 1
                     
             self._select_squire(squire)
-            self._mabi_click(480, 520, delay=0.1)
-            self._mabi_click(610, 1020, delay=2, apply_cfactor=self.apply_factor)
+            self._mabi_click(485, 525, delay=0.3)
+            self._mabi_click(610, 1020, delay=1, apply_cfactor=self.apply_factor)
             for j in range(4):
                 self._mabi_click(590, 910+j*20, apply_cfactor=self.apply_factor)
             assigned_squires += 1
@@ -258,21 +264,20 @@ class SquireBot:
         
     def _select_mission(self, i):
         if i > 5:
-            self._mabi_click(748, 962, delay=0.1, apply_cfactor=self.apply_factor)
+            self._mabi_click(748, 962, delay=0.2, apply_cfactor=self.apply_factor)
             i -= 6
         else:
-            self._mabi_click(748, 938, delay=0.1, apply_cfactor=self.apply_factor)
-        self._mabi_click(500+i*42, 780, delay=0.1, apply_cfactor=self.apply_factor)
+            self._mabi_click(748, 938, delay=0.2, apply_cfactor=self.apply_factor)
+        self._mabi_click(500+i*42, 780, delay=0.2, apply_cfactor=self.apply_factor)
         
     def _select_squire(self, squire):
-        #self._mabi_click(180+i*80, 520, delay=0.1)
         screen = self.grab_screen()
         screen = screen[0:int(600/self.ir_factor), 0:int(900/self.ir_factor)]
         confirm = "./confirms/" + squire + "_confirm.png"
         img = self.load_image(confirm)
         res = cv2.matchTemplate(screen, img, cv2.TM_SQDIFF_NORMED)
         min_val, _, min_loc, _ = cv2.minMaxLoc(res)
-        self._mabi_click(min_loc[1]*self.ir_factor+20, min_loc[0]*self.ir_factor+20, delay=0.1, apply_cfactor=self.apply_factor)
+        self._mabi_click(min_loc[1]*self.ir_factor+20, min_loc[0]*self.ir_factor+20, delay=0.2, apply_cfactor=self.apply_factor)
     
     def _login(self, squire_id):
         self._mabi_click(250+50*squire_id, 1700, multi_click=4)
@@ -304,7 +309,7 @@ class SquireBot:
         img = self.load_image(img_name)
         res = cv2.matchTemplate(screen, img, cv2.TM_SQDIFF_NORMED)
         min_val, _, min_loc, _ = cv2.minMaxLoc(res)
-        #print(img_name, min_val, threshold, min_val < threshold)
+#         print(img_name, min_val, threshold, min_val < threshold)
         return min_val < threshold
         
     def grab_screen(self):
